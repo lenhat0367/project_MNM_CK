@@ -1,6 +1,10 @@
 """
-Web Scraper cho Chợ Tốt - Cào dữ liệu xe máy (FIXED)
-Sửa lỗi: Chuyển trang và trích xuất thông số kỹ thuật
+Web Scraper cho Chợ Tốt - Cào dữ liệu xe máy (FINAL VERSION)
+Sửa lỗi: 
+1. Chuyển trang (ưu tiên nút mũi tên phải)
+2. Lấy giá từ class p26z2wb
+3. CHỈ lấy section "Thông số kỹ thuật", bỏ qua "Tình trạng xe"
+4. Gộp "Hãng" và "Hãng xe" thành 1 cột
 """
 
 from selenium import webdriver
@@ -216,56 +220,72 @@ class ChototScraper:
     
     def extract_specs(self, soup):
         """
-        Trích xuất thông số kỹ thuật - FIXED VERSION
-        Xử lý cả 2 loại cấu trúc HTML khác nhau
+        Trích xuất CHỈ phần "Thông số kỹ thuật"
+        BỎ QUA "Tình trạng xe" và các section khác
         """
         specs = {}
         
         try:
-            # Tìm h2 "Thông số kỹ thuật" hoặc "Thông số chi tiết"
             detail_section = soup.find('h2', class_='tfvqu6u', string=re.compile(r'Thông số'))
             
             if detail_section:
-                # Tìm container chính (div.pqop88r)
                 main_container = detail_section.find_next('div', class_='pqop88r')
                 
                 if main_container:
-                    # Tìm tất cả div chứa thông số (có thể là s1r2e0fc hoặc befjs93)
-                    spec_containers = main_container.find_all('div', class_=re.compile(r's1r2e0fc|befjs93'))
+                    all_sections = main_container.find_all('div', class_='befjs93')
                     
-                    for container in spec_containers:
-                        # Tìm tất cả các item thông số (pqp26ip hoặc p1ja3eq0)
-                        spec_items = container.find_all('div', class_=re.compile(r'pqp26ip|p1ja3eq0'))
-                        
-                        for item in spec_items:
-                            # Tìm tất cả span
-                            all_spans = item.find_all('span', class_='bwq0cbs')
-                            
-                            if len(all_spans) >= 2:
-                                # Span đầu tiên có màu xám (rgb(140, 140, 140)) = label
-                                # Span thứ 2 = value
-                                label_span = all_spans[0]
-                                value_span = all_spans[1]
+                    if all_sections:
+                        for section in all_sections:
+                            section_title = section.find('h3')
+                            if section_title and 'Thông số kỹ thuật' in section_title.get_text():
+                                spec_items = section.find_all('div', class_=re.compile(r'p1ja3eq0'))
                                 
-                                # Lấy text và làm sạch
-                                label = label_span.get_text(strip=True).replace(':', '').strip()
-                                value = value_span.get_text(strip=True)
-                                
-                                if label and value:
-                                    specs[label] = value
-                            
-                            # Trường hợp đặc biệt: có thể có link <a> trong value
-                            # Ví dụ: Hãng xe, Dòng xe
-                            elif len(all_spans) == 1:
-                                label = all_spans[0].get_text(strip=True).replace(':', '').strip()
-                                # Tìm link hoặc span tiếp theo
-                                link = item.find('a')
-                                if link:
-                                    value_span = link.find('span', class_='bwq0cbs')
-                                    if value_span:
-                                        value = value_span.get_text(strip=True)
+                                for item in spec_items:
+                                    all_spans = item.find_all('span', class_='bwq0cbs')
+                                    
+                                    if len(all_spans) >= 2:
+                                        label = all_spans[0].get_text(strip=True).replace(':', '').strip()
+                                        value = all_spans[1].get_text(strip=True)
+                                        
                                         if label and value:
                                             specs[label] = value
+                                    
+                                    elif len(all_spans) == 1:
+                                        label = all_spans[0].get_text(strip=True).replace(':', '').strip()
+                                        link = item.find('a')
+                                        if link:
+                                            value_span = link.find('span', class_='bwq0cbs')
+                                            if value_span:
+                                                value = value_span.get_text(strip=True)
+                                                if label and value:
+                                                    specs[label] = value
+                                
+                                break
+                    
+                    if not specs:
+                        spec_container = main_container.find('div', class_='s1r2e0fc')
+                        if spec_container:
+                            spec_items = spec_container.find_all('div', class_=re.compile(r'pqp26ip|p1ja3eq0'))
+                            
+                            for item in spec_items:
+                                all_spans = item.find_all('span', class_='bwq0cbs')
+                                
+                                if len(all_spans) >= 2:
+                                    label = all_spans[0].get_text(strip=True).replace(':', '').strip()
+                                    value = all_spans[1].get_text(strip=True)
+                                    
+                                    if label and value:
+                                        specs[label] = value
+                                
+                                elif len(all_spans) == 1:
+                                    label = all_spans[0].get_text(strip=True).replace(':', '').strip()
+                                    link = item.find('a')
+                                    if link:
+                                        value_span = link.find('span', class_='bwq0cbs')
+                                        if value_span:
+                                            value = value_span.get_text(strip=True)
+                                            if label and value:
+                                                specs[label] = value
         
         except Exception as e:
             print(f"    ⚠ Lỗi trích xuất specs: {str(e)}")
@@ -288,25 +308,31 @@ class ChototScraper:
                 'Giá': '',
             }
             
-            # Lấy tiêu đề
             title_elem = soup.find('h1')
             if title_elem:
                 product_data['Tiêu đề'] = title_elem.get_text(strip=True)
             
-            # Lấy giá
-            price_patterns = [
-                soup.find(string=re.compile(r'\d+\.\d+\.\d+ đ')),
-                soup.find(string=re.compile(r'\d+ triệu')),
-                soup.find(string=re.compile(r'\d+\.\d+ tỷ')),
-            ]
-            for price_elem in price_patterns:
-                if price_elem:
-                    product_data['Giá'] = price_elem.strip()
-                    break
+            price_elem = soup.find('b', class_='p26z2wb')
+            if price_elem:
+                product_data['Giá'] = price_elem.get_text(strip=True)
+            else:
+                price_patterns = [
+                    soup.find(string=re.compile(r'\d+\.\d+\.\d+ đ')),
+                    soup.find(string=re.compile(r'\d+ triệu')),
+                    soup.find(string=re.compile(r'\d+\.\d+ tỷ')),
+                ]
+                for price_elem in price_patterns:
+                    if price_elem:
+                        product_data['Giá'] = price_elem.strip()
+                        break
             
-            # Lấy thông số kỹ thuật
             specs = self.extract_specs(soup)
             product_data.update(specs)
+            
+            if 'Hãng' in product_data and 'Hãng xe' not in product_data:
+                product_data['Hãng xe'] = product_data.pop('Hãng')
+            elif 'Hãng' in product_data and 'Hãng xe' in product_data:
+                product_data.pop('Hãng')
             
             return product_data
             
@@ -315,27 +341,19 @@ class ChototScraper:
             return None
     
     def go_to_next_page(self, current_page):
-        """
-        Chuyển sang trang tiếp theo - FIXED VERSION
-        """
+        """Chuyển sang trang tiếp theo - ưu tiên nút mũi tên phải"""
         next_page = current_page + 1
         
         try:
-            # CÁCH 1: Click vào link số trang tiếp theo
-            # Ví dụ: <a href="/mua-ban-xe-tp-ho-chi-minh?page=2"><span>2</span></a>
-            next_page_link = self.driver.find_element(
-                By.XPATH, 
-                f"//a[@href='/mua-ban-xe-tp-ho-chi-minh?page={next_page}']"
+            right_arrow_button = self.driver.find_element(
+                By.XPATH,
+                "//button[@class='Paging_redirectPageBtn__KvsqJ' and .//i[contains(@class, 'rightIcon') and not(contains(@class, 'Disable'))]]"
             )
             
-            print(f"\n➡️  Tìm thấy link trang {next_page}, đang click...")
-            
-            # Scroll đến element
-            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", next_page_link)
+            print(f"\n➡️  Tìm thấy nút mũi tên phải, đang click...")
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", right_arrow_button)
             time.sleep(1)
-            
-            # Click
-            next_page_link.click()
+            right_arrow_button.click()
             time.sleep(4)
             
             print(f"✓ Đã chuyển sang trang {next_page}")
@@ -343,37 +361,44 @@ class ChototScraper:
             return True
             
         except Exception as e1:
-            # CÁCH 2: Click vào nút mũi tên phải (rightIcon)
+            print(f"   ⚠ Không tìm thấy nút mũi tên phải")
+            
             try:
-                right_arrow = self.driver.find_element(
-                    By.XPATH,
-                    "//button[@class='Paging_redirectPageBtn__KvsqJ']//i[contains(@class, 'rightIcon') and not(contains(@class, 'Disable'))]"
+                next_page_link = self.driver.find_element(
+                    By.XPATH, 
+                    f"//a[@href='/mua-ban-xe-tp-ho-chi-minh?page={next_page}']"
                 )
                 
-                # Click vào button cha
-                button = right_arrow.find_element(By.XPATH, "./ancestor::button")
-                
-                print(f"\n➡️  Tìm thấy nút mũi tên phải, đang click...")
-                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", button)
+                print(f"\n➡️  Tìm thấy link trang {next_page}, đang click...")
+                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", next_page_link)
                 time.sleep(1)
-                button.click()
+                next_page_link.click()
                 time.sleep(4)
                 
-                print(f"✓ Đã chuyển sang trang tiếp theo")
+                print(f"✓ Đã chuyển sang trang {next_page}")
                 print(f"✓ URL hiện tại: {self.driver.current_url}")
                 return True
                 
             except Exception as e2:
-                # CÁCH 3: Thay đổi URL trực tiếp
+                print(f"   ⚠ Không tìm thấy link trang {next_page}")
+                
                 try:
                     new_url = f"https://www.chotot.com/mua-ban-xe-tp-ho-chi-minh?page={next_page}"
-                    print(f"\n➡️  Không tìm thấy nút, đang chuyển URL trực tiếp...")
+                    print(f"\n➡️  Thay đổi URL trực tiếp sang trang {next_page}...")
                     self.driver.get(new_url)
                     time.sleep(4)
                     
-                    print(f"✓ Đã chuyển sang trang {next_page}")
-                    print(f"✓ URL hiện tại: {self.driver.current_url}")
-                    return True
+                    soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+                    product_pattern = re.compile(r'/mua-ban.*\d+$')
+                    products = soup.find_all('a', href=product_pattern)
+                    
+                    if len(products) > 0:
+                        print(f"✓ Đã chuyển sang trang {next_page}")
+                        print(f"✓ URL hiện tại: {self.driver.current_url}")
+                        return True
+                    else:
+                        print(f"✗ Trang {next_page} không có sản phẩm, đã hết dữ liệu")
+                        return False
                     
                 except Exception as e3:
                     print(f"\n✗ Không thể chuyển trang: {str(e3)}")
@@ -436,12 +461,10 @@ class ChototScraper:
             print(f"\n✓ Hoàn thành trang {page_num}")
             print(f"📊 Tổng đã cào: {len(self.data)}/{max_products}")
             
-            # Kiểm tra xem còn cào tiếp không
             if len(self.data) >= max_products:
                 print("\n🎯 Đã đủ số lượng sản phẩm cần cào")
                 break
             
-            # Chuyển sang trang tiếp theo
             if not self.go_to_next_page(page_num):
                 print("\n⚠ Không thể chuyển trang, dừng lại")
                 break
@@ -460,14 +483,11 @@ class ChototScraper:
         
         df = pd.DataFrame(self.data)
         
-        # Sắp xếp cột
         priority_cols = [
             'URL', 'Tiêu đề', 'Giá',
-            'Hãng xe', 'Dòng xe', 'Năm sản xuất', 'Hộp số', 'Nhiên liệu', 
-            'Kiểu dáng', 'Số chỗ', 'Trọng lượng', 'Trọng tải',
-            'Số Km đã đi', 'Tình trạng', 'Xuất xứ', 
-            'Có phụ kiện đi kèm', 'Còn hạn đăng kiểm',
-            'Chính sách bảo hành',
+            'Hãng xe', 'Dòng xe', 'Năm sản xuất', 
+            'Hộp số', 'Nhiên liệu', 'Kiểu dáng', 
+            'Số chỗ', 'Trọng lượng', 'Trọng tải',
             'Loại xe', 'Dung tích xe', 'Loại phụ tùng', 'Mã phụ tùng'
         ]
         
@@ -481,6 +501,7 @@ class ChototScraper:
         print(f"💾 ĐÃ LƯU FILE")
         print(f"📁 {filename}")
         print(f"📊 {len(self.data)} sản phẩm, {len(df.columns)} cột")
+        print(f"📋 Các cột: {', '.join(df.columns.tolist())}")
         print(f"{'='*70}")
     
     def close(self):
@@ -490,7 +511,13 @@ class ChototScraper:
 
 def main():
     """Hàm chính"""
-    print("🚀 Khởi động Chợ Tốt Scraper (FIXED VERSION)...")
+    print("🚀 Khởi động Chợ Tốt Scraper (FINAL VERSION)...")
+    print("📌 Thay đổi:")
+    print("   - Lấy giá từ class p26z2wb")
+    print("   - CHỈ lấy section 'Thông số kỹ thuật'")
+    print("   - Bỏ qua 'Tình trạng xe' và các section khác")
+    print("   - Gộp 'Hãng' và 'Hãng xe' thành 1 cột 'Hãng xe'")
+    print("   - Ưu tiên nút mũi tên phải để chuyển trang\n")
     
     scraper = ChototScraper(headless=True)
     
