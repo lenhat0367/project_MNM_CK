@@ -518,7 +518,7 @@ def main():
     print("   - Bỏ qua 'Tình trạng xe' và các section khác")
     print("   - Gộp 'Hãng' và 'Hãng xe' thành 1 cột 'Hãng xe'")
     print("   - Ưu tiên nút mũi tên phải để chuyển trang\n")
-    
+    print()
     scraper = ChototScraper(headless=True)
     
     try:
@@ -537,7 +537,6 @@ def main():
         print("\n🔒 Đóng browser...")
         scraper.close()
         print("✅ Hoàn tất!")
-
 
 if __name__ == "__main__":
     main()

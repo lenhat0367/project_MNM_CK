@@ -1,0 +1,57 @@
+[33mcommit acc3330ca5a322d5023e85f6b3f4c97cae43959b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Nhat Le <lenhat0367@gmail.com>
+Date:   Mon Dec 15 14:28:07 2025 +0700
+
+    sua text
+
+[33mcommit ea33690431b669f2c2025326a45d45f9e5401719[m
+Author: Nguyen Thanh Binh <datpro1246@gmail.com>
+Date:   Mon Dec 15 14:25:45 2025 +0700
+
+    them
+
+[33mcommit 6159afb19282f8aa9f78c4715fafadbf3482f108[m
+Author: nguyễn thanh bình <datpro1246@gmail.com>
+Date:   Mon Dec 15 14:20:58 2025 +0700
+
+    Add files via upload
+    
+    thử
+
+[33mcommit 6339fd665b77818fe22c056f943b59f5f6c9297f[m
+Merge: f2c6a25 2df7055
+Author: Nguyen Thanh Binh <datpro1246@gmail.com>
+Date:   Mon Dec 15 14:18:21 2025 +0700
+
+    Merge branch 'main' of https://github.com/lenhat0367/project_MNM_CK
+
+[33mcommit f2c6a2529d4006a0a25cf45b2c9fe473556c4c77[m
+Author: Nguyen Thanh Binh <datpro1246@gmail.com>
+Date:   Mon Dec 15 14:01:17 2025 +0700
+
+    test push
+
+[33mcommit 2df70555503ed7b2615afa9a06d55d0ade33cd22[m
+Author: trandai-loc <sinhvien.trandailoc@gmail.com>
+Date:   Mon Dec 15 13:59:25 2025 +0700
+
+    ADD
+
+[33mcommit 945550c1da657cbb38988a16fb34a64b7cbdb424[m
+Merge: 4decc65 58076da
+Author: Nhat Le <lenhat0367@gmail.com>
+Date:   Sat Dec 6 14:03:30 2025 +0700
+
+    Merge branch 'main' of https://github.com/lenhat0367/project_MNM_CK
+
+[33mcommit 4decc65c03605fcf93ed8978b0f277ec6548b2c8[m
+Author: Nhat Le <lenhat0367@gmail.com>
+Date:   Sat Dec 6 14:01:56 2025 +0700
+
+    Dong nay la ghi chu cho lan commit dau tien
+
+[33mcommit 58076da71858c3ee09d8b9d234aa93ad61638225[m
+Author: Lê Minh Nhật <lenhat0367@gmail.com>
+Date:   Sat Dec 6 13:53:36 2025 +0700
+
+    Initial commit
