@@ -1,8 +1,3 @@
-"""
-Web Scraper cho Chợ Tốt - Tối ưu hóa
-Version 8.1: Fix HOÀN TOÀN tên người đăng (cửa hàng + cá nhân)
-"""
-
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
@@ -14,8 +9,8 @@ import re
 class ChototScraper:
     def __init__(self, headless=True):
         """Khởi tạo scraper"""
-        gecko_path = "/Users/binh/thuc_hanh_ma_nguon_mo/gecko bài tập /bài tập trên lớp/geckodriver"
-        firefox_path = "/Applications/Firefox.app/Contents/MacOS/firefox"
+        gecko_path = "D:/project_MNM_CK/geckodriver.exe"
+        firefox_path = "C:/Program Files/Mozilla Firefox/firefox.exe"
         
         self.options = Options()
         self.options.binary_location = firefox_path
