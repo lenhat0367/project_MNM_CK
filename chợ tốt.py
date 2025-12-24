@@ -1,6 +1,6 @@
 """
-Web Scraper cho Chợ Tốt - FIX HOÀN TOÀN bằng itemprop
-Version 5: Ưu tiên itemprop trước, backup bằng DOM parsing
+Web Scraper cho Chợ Tốt - Tối ưu hóa
+Version 8.1: Fix HOÀN TOÀN tên người đăng (cửa hàng + cá nhân)
 """
 
 from selenium import webdriver
@@ -24,7 +24,6 @@ class ChototScraper:
         if headless:
             self.options.add_argument('--headless')
         
-        self.options.set_preference('permissions.default.image', 2)
         self.options.set_preference('general.useragent.override', 
                                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Gecko/20100101 Firefox/120.0')
         
@@ -36,16 +35,15 @@ class ChototScraper:
         
         # DANH SÁCH CỘT
         self.required_columns = [
-            'URL', 'Tiêu đề', 'Giá',
+            'URL', 'Tên sản phẩm', 'Giá', 'Tên người đăng', 'Địa chỉ', 'Thời gian đăng', 'URL hình ảnh',
             'Số Km đã đi', 'Số đời chủ', 'Có phụ kiện đi kèm', 'Còn hạn đăng kiểm',
             'Xuất xứ', 'Tình trạng', 'Chính sách bảo hành',
-            'Hãng xe', 'Dòng xe', 'Năm sản xuất', 'Phiên bản xe', 'Hộp số',
-            'Nhiên liệu', 'Kiểu dáng', 'Số chỗ', 'Hệ dẫn động', 'Công suất động cơ',
-            'Momen xoắn', 'Dung tích động cơ', 'Nhiên liệu tiêu thụ', 'Số túi khí',
-            'Khoảng sáng gầm xe', 'Số cửa', 'Trọng lượng', 'Trọng tải'
+            'Hãng xe', 'Dòng xe', 'Năm sản xuất', 'Hộp số',
+            'Nhiên liệu', 'Kiểu dáng', 'Số chỗ', 
+            'Trọng lượng', 'Trọng tải'
         ]
         
-        # 🔑 MAPPING ITEMPROP - PHƯƠNG PHÁP CHÍNH XÁC NHẤT
+        # MAPPING ITEMPROP
         self.itemprop_mappings = {
             'mileage_v2': 'Số Km đã đi',
             'number_of_owners': 'Số đời chủ',
@@ -57,19 +55,10 @@ class ChototScraper:
             'carbrand': 'Hãng xe',
             'carmodel': 'Dòng xe',
             'mfdate': 'Năm sản xuất',
-            'option': 'Phiên bản xe',
             'gearbox': 'Hộp số',
             'fuel': 'Nhiên liệu',
             'cartype': 'Kiểu dáng',
             'carseats': 'Số chỗ',
-            'drivetrain': 'Hệ dẫn động',          # ⭐ Trường bị thiếu
-            'horse_power': 'Công suất động cơ',   # ⭐ Trường bị thiếu
-            'torque': 'Momen xoắn',               # ⭐ Trường bị thiếu
-            'engine_capacity': 'Dung tích động cơ', # ⭐ Trường bị thiếu
-            'kml_combined': 'Nhiên liệu tiêu thụ', # ⭐ Trường bị thiếu
-            'air_bag': 'Số túi khí',              # ⭐ Trường bị thiếu
-            'minimum_ground_clearance': 'Khoảng sáng gầm xe',
-            'doors': 'Số cửa',                    # ⭐ Trường bị thiếu
             'veh_unladen_weight': 'Trọng lượng',
             'veh_gross_weight': 'Trọng tải'
         }
@@ -118,13 +107,10 @@ class ChototScraper:
         return product_links
     
     def extract_specs_by_itemprop(self, soup):
-        """
-        🔑 PHƯƠNG PHÁP CHÍNH: Dùng itemprop
-        Đây là cách chính xác 100% vì HTML có sẵn attribute itemprop
-        """
+        """Cào theo itemprop"""
         specs = {}
         
-        print(f"    🔑 Phương pháp 1: Tìm theo itemprop...")
+        print(f"    🔑 Tìm theo itemprop...")
         
         for prop, label in self.itemprop_mappings.items():
             elem = soup.find(itemprop=prop)
@@ -134,134 +120,149 @@ class ChototScraper:
                     specs[label] = value
                     print(f"       ✓ {label}: {value}")
         
-        print(f"    ✅ Tìm được {len(specs)} thông số qua itemprop")
+        print(f"    ✅ Tìm được {len(specs)} thông số")
         return specs
     
-    def extract_specs_by_label_matching(self, soup):
-        """
-        🔄 PHƯƠNG PHÁP BACKUP: Tìm theo label text
-        Tìm tất cả span có text là label, lấy span kế tiếp làm value
-        """
-        specs = {}
-        
-        print(f"    🔄 Phương pháp 2: Tìm theo label matching...")
-        
-        # Map label text -> column name
-        label_map = {
-            'Hệ dẫn động': 'Hệ dẫn động',
-            'Công suất động cơ': 'Công suất động cơ',
-            'Momen xoắn': 'Momen xoắn',
-            'Dung tích động cơ': 'Dung tích động cơ',
-            'Nhiên liệu tiêu thụ': 'Nhiên liệu tiêu thụ',
-            'Số túi khí': 'Số túi khí',
-            'Số cửa': 'Số cửa',
-            'Hãng': 'Hãng xe',
-            'Dòng xe': 'Dòng xe',
-            'Năm sản xuất': 'Năm sản xuất',
-            'Phiên bản xe': 'Phiên bản xe',
-            'Hộp số': 'Hộp số',
-            'Nhiên liệu': 'Nhiên liệu',
-            'Kiểu dáng': 'Kiểu dáng',
-            'Số chỗ': 'Số chỗ',
-            'Khoảng sáng gầm xe': 'Khoảng sáng gầm xe',
-            'Trọng lượng': 'Trọng lượng',
-            'Trọng tải': 'Trọng tải'
+    def extract_seller_info(self, soup):
+        """Cào thông tin người bán - VERSION 8.1 FIX HOÀN TOÀN"""
+        seller_info = {
+            'Tên người đăng': '',
+            'Địa chỉ': '',
+            'Thời gian đăng': '',
+            'URL hình ảnh': ''
         }
         
-        for label_text, column_name in label_map.items():
-            if column_name in specs:
-                continue
-                
-            # Tìm span chứa label text
-            label_spans = soup.find_all('span', class_='bwq0cbs', 
-                                       string=lambda t: t and label_text in t)
-            
-            for label_span in label_spans:
-                # Tìm span kế tiếp cùng level (sibling)
-                next_span = label_span.find_next_sibling('span', class_='bwq0cbs')
-                
-                if next_span:
-                    value = next_span.get_text(strip=True)
-                    if value:
-                        specs[column_name] = value
-                        print(f"       ✓ {column_name}: {value}")
-                        break
-                
-                # Nếu không có sibling, tìm trong parent
-                parent = label_span.parent
-                if parent:
-                    all_spans = parent.find_all('span', class_='bwq0cbs')
-                    # Nếu có 2 span, lấy span thứ 2
-                    if len(all_spans) >= 2:
-                        value = all_spans[1].get_text(strip=True)
-                        if value and value != label_text:
-                            specs[column_name] = value
-                            print(f"       ✓ {column_name}: {value}")
-                            break
-        
-        if len(specs) > 0:
-            print(f"    ✅ Tìm thêm {len(specs)} thông số qua label matching")
-        
-        return specs
-    
-    def extract_specs(self, soup):
-        """
-        Kết hợp 2 phương pháp để đảm bảo 100% lấy được dữ liệu
-        """
-        specs = {}
-        
         try:
-            print(f"    🔍 BẮT ĐẦU CÀO THÔNG SỐ...")
+            # ===== FIX TÊN NGƯỜI ĐĂNG - LẤY CẢ CỬA HÀNG VÀ CÁ NHÂN =====
+            # Tìm div chứa thông tin seller
+            seller_container = soup.find('div', itemprop='seller')
             
-            # Phương pháp 1: itemprop (chính xác nhất)
-            specs1 = self.extract_specs_by_itemprop(soup)
-            specs.update(specs1)
+            if seller_container:
+                # Method 1: Tìm trong div class="pf9ruvz" (chứa tên)
+                pf9ruvz_div = seller_container.find('div', class_=re.compile(r'pf9ruvz'))
+                
+                if pf9ruvz_div:
+                    # Tìm thẻ <a> với href chứa "/cua-hang/" HOẶC "/user/"
+                    seller_link = pf9ruvz_div.find('a', href=re.compile(r'/(cua-hang|user)/'))
+                    
+                    if seller_link:
+                        seller_b = seller_link.find('b')
+                        if seller_b:
+                            seller_name = seller_b.get_text(strip=True)
+                            
+                            # Lọc: không phải số rating và đủ dài
+                            if seller_name and not seller_name.replace('.', '').replace('(', '').replace(')', '').isdigit():
+                                if len(seller_name) > 1:  # Tên ít nhất 2 ký tự
+                                    seller_info['Tên người đăng'] = seller_name
+                                    print(f"       ✓ Tên người đăng: {seller_name}")
             
-            # Phương pháp 2: Label matching (backup)
-            specs2 = self.extract_specs_by_label_matching(soup)
-            # Chỉ thêm những trường chưa có
-            for key, value in specs2.items():
-                if key not in specs:
-                    specs[key] = value
+            # Backup method: Tìm tất cả <b> trong itemprop="seller"
+            if not seller_info['Tên người đăng'] and seller_container:
+                all_b_tags = seller_container.find_all('b')
+                for b_tag in all_b_tags:
+                    # Kiểm tra thẻ b này có nằm trong link /cua-hang/ hoặc /user/ không
+                    parent_a = b_tag.find_parent('a')
+                    if parent_a:
+                        href = parent_a.get('href', '')
+                        if '/cua-hang/' in href or '/user/' in href:
+                            name = b_tag.get_text(strip=True)
+                            
+                            # Loại bỏ rating số, text ngắn, text có "bán"/"Đánh giá"
+                            if name and len(name) > 2:
+                                # Kiểm tra không phải số (rating)
+                                if not name.replace('.', '').replace('(', '').replace(')', '').isdigit():
+                                    # Kiểm tra không chứa từ không mong muốn
+                                    if not any(x in name.lower() for x in ['bán', 'đánh giá', 'rating']):
+                                        seller_info['Tên người đăng'] = name
+                                        print(f"       ✓ Tên người đăng (backup): {name}")
+                                        break
             
-            print(f"    🎯 TỔNG: {len(specs)} thông số")
-            
-            # Debug: Kiểm tra các trường quan trọng
-            critical_fields = ['Hệ dẫn động', 'Công suất động cơ', 'Momen xoắn', 
-                             'Dung tích động cơ', 'Nhiên liệu tiêu thụ', 'Số túi khí', 'Số cửa']
-            
-            missing = [f for f in critical_fields if f not in specs]
-            if missing:
-                print(f"    ⚠️  Còn thiếu: {', '.join(missing)}")
+            # ===== THỜI GIAN ĐĂNG BÀI =====
+            # Pattern: "Đăng X ngày trước" hoặc "Đăng X giờ trước" hoặc "Đăng X phút trước"
+            time_posted = soup.find('span', class_='bwq0cbs', string=re.compile(r'Đăng.*trước'))
+            if time_posted:
+                seller_info['Thời gian đăng'] = time_posted.get_text(strip=True)
+                print(f"       ✓ Thời gian đăng: {seller_info['Thời gian đăng']}")
             else:
-                print(f"    ✅ ĐẦY ĐỦ tất cả các trường quan trọng!")
+                # Backup: Tìm trong tất cả span
+                all_spans = soup.find_all('span')
+                for span in all_spans:
+                    text = span.get_text(strip=True)
+                    if 'Đăng' in text and 'trước' in text:
+                        seller_info['Thời gian đăng'] = text
+                        print(f"       ✓ Thời gian đăng (backup): {text}")
+                        break
             
+            # ===== ĐỊA CHỈ =====
+            address_spans = soup.find_all('span', class_='bwq0cbs')
+            for span in address_spans:
+                text = span.get_text(strip=True)
+                # Địa chỉ thường dài và chứa địa danh
+                if len(text) > 15 and any(x in text for x in ['Phường', 'Quận', 'TP', 'Tp', 'Huyện', 'Thành phố', 'Tỉnh']):
+                    # Không lấy text có "Đăng", "đã bán", "đang bán"
+                    if 'Đăng' not in text and 'bán' not in text.lower() and 'Phản hồi' not in text:
+                        seller_info['Địa chỉ'] = text
+                        print(f"       ✓ Địa chỉ: {text}")
+                        break
+            
+            # ===== URL HÌNH ẢNH =====
+            all_imgs = soup.find_all('img', src=True)
+            candidate_images = []
+            
+            for img in all_imgs:
+                src = img.get('src', '')
+                if not src or any(x in src.lower() for x in ['icon', 'logo', 'static', 'svg']):
+                    continue
+                
+                # Ưu tiên ảnh từ CDN
+                if 'cdn.chotot.com' in src or 'storage' in src or 'img' in src:
+                    width = img.get('width', '')
+                    height = img.get('height', '')
+                    
+                    size = 0
+                    if width and str(width).isdigit():
+                        size += int(width)
+                    if height and str(height).isdigit():
+                        size += int(height)
+                    
+                    candidate_images.append((src, size))
+            
+            if candidate_images:
+                candidate_images.sort(key=lambda x: x[1], reverse=True)
+                seller_info['URL hình ảnh'] = candidate_images[0][0]
+                print(f"       ✓ URL hình ảnh: {seller_info['URL hình ảnh'][:60]}...")
+            
+            if not seller_info['URL hình ảnh']:
+                for img in all_imgs:
+                    src = img.get('src', '')
+                    if src and src.startswith('http'):
+                        seller_info['URL hình ảnh'] = src
+                        print(f"       ✓ URL hình ảnh (backup): {src[:60]}...")
+                        break
+                        
         except Exception as e:
-            print(f"    ⚠ Lỗi: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            print(f"       ⚠️ Lỗi lấy thông tin người bán: {str(e)}")
         
-        return specs
+        return seller_info
     
     def scrape_product(self, url):
         """Cào thông tin chi tiết"""
         try:
             self.driver.get(url)
-            time.sleep(3)  # Tăng thời gian chờ
+            time.sleep(4)
             
-            # Scroll nhiều hơn để load đầy đủ
             for i in range(3):
                 self.driver.execute_script(f"window.scrollTo(0, {(i+1)*800});")
-                time.sleep(1)
+                time.sleep(1.5)
             
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
             
-            product_data = {'URL': url, 'Tiêu đề': '', 'Giá': ''}
+            product_data = {'URL': url, 'Tên sản phẩm': '', 'Giá': ''}
             
             # Lấy tiêu đề
             title_elem = soup.find('h1')
             if title_elem:
-                product_data['Tiêu đề'] = title_elem.get_text(strip=True)
+                product_data['Tên sản phẩm'] = title_elem.get_text(strip=True)
             
             # Lấy giá
             price_elem = soup.find('b', class_='p26z2wb')
@@ -278,8 +279,12 @@ class ChototScraper:
                         product_data['Giá'] = p.strip()
                         break
             
-            # Lấy thông số
-            specs = self.extract_specs(soup)
+            # Lấy thông tin người bán, địa chỉ, thời gian, hình ảnh
+            seller_info = self.extract_seller_info(soup)
+            product_data.update(seller_info)
+            
+            # Lấy thông số kỹ thuật
+            specs = self.extract_specs_by_itemprop(soup)
             product_data.update(specs)
             
             return product_data
@@ -308,7 +313,7 @@ class ChototScraper:
     def scrape_test_pages(self, start_url, num_pages=2):
         """CÀO TEST"""
         print("=" * 70)
-        print("🔧 FIX 100% - ƯU TIÊN ITEMPROP")
+        print("🔧 Chợ Tốt Scraper - Version 8.1 FINAL")
         print("=" * 70)
         print(f"🔗 URL: {start_url}\n")
         
@@ -340,12 +345,14 @@ class ChototScraper:
                 
                 product_data = self.scrape_product(link)
                 
-                if product_data and product_data.get('Tiêu đề'):
+                if product_data and product_data.get('Tên sản phẩm'):
                     self.data.append(product_data)
-                    print(f"  ✅ {product_data.get('Tiêu đề', '')[:50]}")
+                    print(f"  ✅ {product_data.get('Tên sản phẩm', '')[:50]}")
                     print(f"     💰 {product_data.get('Giá', 'N/A')}")
+                    print(f"     👤 {product_data.get('Tên người đăng', 'N/A')}")
+                    print(f"     ⏰ {product_data.get('Thời gian đăng', 'N/A')}")
                     
-                    spec_count = len([k for k in product_data.keys() if k not in ['URL', 'Tiêu đề', 'Giá']])
+                    spec_count = len([k for k in product_data.keys() if k not in ['URL', 'Tên sản phẩm', 'Giá', 'Tên người đăng', 'Địa chỉ', 'Thời gian đăng', 'URL hình ảnh']])
                     print(f"     📊 {spec_count} thông số")
                 else:
                     print(f"  ✗ Lỗi")
@@ -356,7 +363,7 @@ class ChototScraper:
         print(f"🎉 HOÀN TẤT: {len(self.data)} sản phẩm")
         print(f"{'='*70}")
     
-    def export_to_excel(self, filename='chotot_100percent.xlsx'):
+    def export_to_excel(self, filename='chotot_final_v8.xlsx'):
         """Xuất Excel với thống kê chi tiết"""
         if not self.data:
             print("\n✗ Không có dữ liệu!")
@@ -378,28 +385,20 @@ class ChototScraper:
         
         print(f"\n📊 THỐNG KÊ:")
         
-        print(f"\n   🔧 CÁC TRƯỜNG ĐÃ FIX:")
-        critical = ['Hệ dẫn động', 'Công suất động cơ', 'Momen xoắn', 
-                   'Dung tích động cơ', 'Nhiên liệu tiêu thụ', 'Số túi khí', 'Số cửa']
+        print(f"\n   👤 THÔNG TIN NGƯỜI BÁN:")
+        seller_fields = ['Tên người đăng', 'Địa chỉ', 'Thời gian đăng', 'URL hình ảnh']
         
-        for col in critical:
+        for col in seller_fields:
             if col in df.columns:
                 non_empty = df[col].astype(str).str.strip().ne('').sum()
                 pct = non_empty*100//len(df) if len(df) > 0 else 0
-                
-                if pct >= 80:
-                    status = "✅"
-                elif pct >= 50:
-                    status = "⚠️"
-                else:
-                    status = "❌"
-                
+                status = "✅" if pct >= 50 else "⚠️"
                 print(f"      {status} {col}: {non_empty}/{len(df)} ({pct}%)")
         
-        print(f"\n   ⚙️  THÔNG SỐ KHÁC:")
-        others = ['Hãng xe', 'Dòng xe', 'Năm sản xuất', 'Hộp số', 'Nhiên liệu']
+        print(f"\n   🚗 THÔNG SỐ XE:")
+        spec_fields = ['Hãng xe', 'Dòng xe', 'Năm sản xuất', 'Hộp số', 'Nhiên liệu', 'Số Km đã đi']
         
-        for col in others:
+        for col in spec_fields:
             if col in df.columns:
                 non_empty = df[col].astype(str).str.strip().ne('').sum()
                 pct = non_empty*100//len(df) if len(df) > 0 else 0
@@ -407,20 +406,6 @@ class ChototScraper:
                 print(f"      {status} {col}: {non_empty}/{len(df)} ({pct}%)")
         
         print(f"\n{'='*70}")
-        
-        # Kiểm tra các trường quan trọng
-        all_good = True
-        for col in critical:
-            if col in df.columns:
-                non_empty = df[col].astype(str).str.strip().ne('').sum()
-                if non_empty == 0:
-                    all_good = False
-                    print(f"⚠️  CẢNH BÁO: {col} vẫn còn TRỐNG!")
-        
-        if all_good:
-            print("✅ HOÀN HẢO - Tất cả các trường đều có dữ liệu!")
-        
-        print(f"{'='*70}")
     
     def close(self):
         """Đóng browser"""
@@ -429,12 +414,13 @@ class ChototScraper:
 
 def main():
     """Hàm chính"""
-    print("🚀 Chợ Tốt Scraper - FIX 100%")
+    print("🚀 Chợ Tốt Scraper - Version 8.1 FINAL")
     print("=" * 70)
-    print("🔑 Chiến lược:")
-    print("   1. Ưu tiên itemprop (chính xác 100%)")
-    print("   2. Backup bằng label matching")
-    print("   3. Tăng thời gian chờ để load đầy đủ")
+    print("📋 Fix HOÀN TOÀN:")
+    print("   ✓ Lấy tên CẢ cửa hàng (/cua-hang/) VÀ cá nhân (/user/)")
+    print("   ✓ Tìm trong <div itemprop='seller'>")
+    print("   ✓ Lọc chặt rating số và text không mong muốn")
+    print("   ✓ Thêm cột 'Thời gian đăng'")
     print("=" * 70)
     print()
     
@@ -443,18 +429,18 @@ def main():
     
     try:
         scraper.scrape_test_pages(url, num_pages=2)
-        scraper.export_to_excel('chotot_100percent.xlsx')
+        scraper.export_to_excel('chotot_final_v8.1.xlsx')
         
     except KeyboardInterrupt:
         print("\n\n⚠ Dừng")
         if scraper.data:
-            scraper.export_to_excel('chotot_interrupted.xlsx')
+            scraper.export_to_excel('chotot_interrupted_v8.1.xlsx')
     except Exception as e:
         print(f"\n✗ Lỗi: {str(e)}")
         import traceback
         traceback.print_exc()
         if scraper.data:
-            scraper.export_to_excel('chotot_error.xlsx')
+            scraper.export_to_excel('chotot_error_v8.1.xlsx')
     finally:
         print("\n🔒 Đóng browser...")
         scraper.close()
