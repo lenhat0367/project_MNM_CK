@@ -22,8 +22,8 @@ import re
 class ChototScraper:
     def __init__(self, headless=True):
         """Khởi tạo scraper"""
-        gecko_path = "/Users/binh/thuc_hanh_ma_nguon_mo/gecko bài tập /bài tập trên lớp/geckodriver"
-        firefox_path = "/Applications/Firefox.app/Contents/MacOS/firefox"
+        gecko_path = r'D:\Cong viec\Ma_Nguon_Mo\BT_cuoiki_MNM\geckodriver.exe'
+        firefox_path = "C:/Program Files/Mozilla Firefox/firefox.exe"
         
         self.options = Options()
         self.options.binary_location = firefox_path
