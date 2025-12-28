@@ -29,7 +29,7 @@ class ChototScraper:
         self.wait = None
         self.data = []
 
-        # --- THÊM: Kết nối MongoDB ---
+        # --- Kết nối MongoDB ---
         try:
             self.client = MongoClient("mongodb://localhost:27017/")
             self.db = self.client["chotot_db"]
@@ -39,7 +39,7 @@ class ChototScraper:
         except Exception as e:
             print(f"✗ Lỗi kết nối DB: {e}")
         
-        # DANH SÁCH CỘT (Giữ nguyên)
+        # DANH SÁCH CỘT 
         self.required_columns = [
             'URL', 'Tên sản phẩm', 'Giá', 'Tên người đăng', 'Địa chỉ', 'Thời gian đăng', 'URL hình ảnh',
             'Số Km đã đi', 'Số đời chủ', 'Có phụ kiện đi kèm', 'Còn hạn đăng kiểm',
@@ -49,7 +49,7 @@ class ChototScraper:
             'Trọng lượng', 'Trọng tải'
         ]
         
-        # MAPPING ITEMPROP (Giữ nguyên)
+        # MAPPING ITEMPROP 
         self.itemprop_mappings = {
             'mileage_v2': 'Số Km đã đi', 'number_of_owners': 'Số đời chủ',
             'include_accessories': 'Có phụ kiện đi kèm', 'valid_registration': 'Còn hạn đăng kiểm',
