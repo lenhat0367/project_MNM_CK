@@ -10,7 +10,7 @@ from pymongo import MongoClient
 class ChototScraper:
     def __init__(self, headless=True):
         """Khởi tạo scraper"""
-        gecko_path = r'D:\Cong viec\Ma_Nguon_Mo\BT_cuoiki_MNM\geckodriver.exe'
+        gecko_path = r'D:\Cong viec\Ma_Nguon_Mo\BT_cuoiki_MNM\main_code\geckodriver.exe'
         firefox_path = "C:/Program Files/Mozilla Firefox/firefox.exe"
         
         self.options = Options()
