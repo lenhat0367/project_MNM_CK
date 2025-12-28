@@ -1,8 +1,3 @@
-"""
-Web Scraper cho Chợ Tốt - Version 8.1 (DATABASE + CSV AUTO-EXPORT)
-Giữ nguyên 100% logic cào của bạn.
-"""
-
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
@@ -10,7 +5,6 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import time
 import re
-# --- THÊM: Thư viện MongoDB ---
 from pymongo import MongoClient
 
 class ChototScraper:
@@ -67,7 +61,7 @@ class ChototScraper:
             'veh_unladen_weight': 'Trọng lượng', 'veh_gross_weight': 'Trọng tải'
         }
 
-    # --- GIỮ NGUYÊN 100% CÁC HÀM CÀO DỮ LIỆU CỦA BẠN ---
+    # --- HÀM CÀO DỮ LIỆU ---
     def get_product_links_from_page(self):
         product_links = []
         last_height = self.driver.execute_script("return document.body.scrollHeight")
@@ -166,17 +160,17 @@ class ChototScraper:
                 if data: self.data.append(data)
                 print(f" ✓ Đã cào: {link[:50]}")
 
-    # --- THAY ĐỔI: Chuyển Export Excel sang Database + CSV ---
+    # --- Lưu DataBase---
     def save_to_db_and_export_csv(self):
         if not self.data: return
         
         # 1. Lưu vào MongoDB (Upsert tránh trùng)
-        print("\n⏳ Đang lưu vào MongoDB...")
+        print("\nĐang lưu vào MongoDB...")
         for item in self.data:
             self.collection.update_one({"URL": item["URL"]}, {"$set": item}, upsert=True)
         
         # 2. Tự động đóng gói ra file CSV từ Database
-        print("📦 Đang xuất file CSV...")
+        print("Đang xuất file CSV...")
         cursor = self.collection.find({})
         df = pd.DataFrame(list(cursor))
         
@@ -184,7 +178,7 @@ class ChototScraper:
             if '_id' in df.columns: df.drop('_id', axis=1, inplace=True)
             # encoding='utf-8-sig' để Excel mở không lỗi tiếng Việt
             df.to_csv('chotot_oto_database.csv', index=False, encoding='utf-8-sig')
-            print(f"✅ Đã lưu xong DB và xuất file 'chotot_oto_database.csv'!")
+            print(f"Đã lưu xong DB và xuất file 'chotot_oto_database.csv'!")
 
     def close(self):
         self.driver.quit()
