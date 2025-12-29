@@ -35,9 +35,9 @@ class ChototScraper:
             self.db = self.client["chotot_db"]
             self.collection = self.db["xe_may"]
             self.collection.create_index("URL", unique=True) # Chống trùng link
-            print("✓ Đã kết nối MongoDB thành công!")
+            print("Đã kết nối MongoDB thành công!")
         except Exception as e:
-            print(f"✗ Lỗi kết nối DB: {e}")
+            print(f"Lỗi kết nối DB: {e}")
         
         # DANH SÁCH CỘT 
         self.required_columns = [
@@ -158,7 +158,7 @@ class ChototScraper:
             for link in links:
                 data = self.scrape_product(link)
                 if data: self.data.append(data)
-                print(f" ✓ Đã cào: {link[:50]}")
+                print(f"Đã cào: {link[:50]}")
 
     # --- Lưu DataBase---
     def save_to_db_and_export_csv(self):
